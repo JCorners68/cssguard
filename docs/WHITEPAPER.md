@@ -1,6 +1,6 @@
 # CSSGuard: Bidirectional CSS/HTML Class Validation
 
-**Version 1.0 | January 2025**
+**Version 1.0 | January 2026**
 **Author: Jonathan Corners, Voxell AI**
 
 ## Abstract
@@ -123,7 +123,7 @@ New utilities that don't match existing patterns require re-training. This is in
 ### Installation
 
 ```bash
-go install github.com/voxell-ai/cssguard/cmd/cssguard@latest
+go install github.com/JCorners68/cssguard/cmd/cssguard@latest
 ```
 
 ### Training (One-Time)
@@ -209,5 +209,5 @@ CSSGuard closes this gap with bidirectional validation. Train once against your 
 ---
 
 **License**: MIT
-**Repository**: https://github.com/voxell-ai/cssguard
+**Repository**: https://github.com/JCorners68/cssguard
 **Author**: Jonathan Corners ([@JCorners68](https://github.com/JCorners68))

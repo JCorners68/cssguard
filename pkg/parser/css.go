@@ -15,7 +15,8 @@ import (
 var classRegex = regexp.MustCompile(`\.(-?[_a-zA-Z][_a-zA-Z0-9-]*(?:\\[/:.\[\]()%][_a-zA-Z0-9-]*)*)`)
 
 // pseudoCleanRegex removes pseudo-classes/elements from selectors
-var pseudoCleanRegex = regexp.MustCompile(`::?[a-zA-Z-]+(\([^)]*\))?`)
+// Matches :pseudo or ::pseudo but preserves the character before if not backslash
+var pseudoCleanRegex = regexp.MustCompile(`([^\\])::?[a-zA-Z-]+(\([^)]*\))?`)
 
 // ParseFromFile extracts all CSS class selectors from a CSS file.
 func ParseFromFile(path string) ([]string, error) {
@@ -39,7 +40,8 @@ func ParseFromReader(r io.Reader) ([]string, error) {
 	for scanner.Scan() {
 		line := scanner.Text()
 		// Remove pseudo-classes/elements to get clean class names
-		cleaned := pseudoCleanRegex.ReplaceAllString(line, "")
+		// $1 preserves the character before the colon
+		cleaned := pseudoCleanRegex.ReplaceAllString(line, "$1")
 		matches := classRegex.FindAllStringSubmatch(cleaned, -1)
 		for _, match := range matches {
 			if len(match) > 1 {

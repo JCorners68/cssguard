@@ -2,7 +2,7 @@
 
 **Bidirectional CSS/HTML class validator** — Catch orphaned classes before they break production.
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/voxell-ai/cssguard)](https://goreportcard.com/report/github.com/voxell-ai/cssguard)
+[![Go Report Card](https://goreportcard.com/badge/github.com/JCorners68/cssguard)](https://goreportcard.com/report/github.com/JCorners68/cssguard)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## The Problem
@@ -15,7 +15,7 @@ Existing tools find unused CSS. CSSGuard finds the **opposite**: HTML classes wi
 
 ```bash
 # Install
-go install github.com/voxell-ai/cssguard/cmd/cssguard@latest
+go install github.com/JCorners68/cssguard/cmd/cssguard@latest
 
 # Train (once, after CSS build)
 cssguard train --css ./public/css/main.css --output cssguard.json
@@ -90,7 +90,7 @@ jobs:
         run: npm run build
 
       - name: Install cssguard
-        run: go install github.com/voxell-ai/cssguard/cmd/cssguard@latest
+        run: go install github.com/JCorners68/cssguard/cmd/cssguard@latest
 
       - name: Validate CSS classes
         run: cssguard validate --html ./public --config cssguard.json --fail
