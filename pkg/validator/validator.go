@@ -11,19 +11,19 @@ import (
 
 // Result represents the validation result.
 type Result struct {
-	HTMLClasses    int      `json:"html_classes"`
-	CSSClasses     int      `json:"css_classes"`
-	Orphans        []string `json:"orphans"`         // HTML classes with no CSS
-	Unused         []string `json:"unused"`          // CSS classes not in HTML
-	Matched        int      `json:"matched"`         // Classes in both
-	OrphanCount    int      `json:"orphan_count"`
-	UnusedCount    int      `json:"unused_count"`
-	CoveragePercent float64 `json:"coverage_percent"` // Matched / HTML classes
+	HTMLClasses     int      `json:"html_classes"`
+	CSSClasses      int      `json:"css_classes"`
+	Orphans         []string `json:"orphans"` // HTML classes with no CSS
+	Unused          []string `json:"unused"`  // CSS classes not in HTML
+	Matched         int      `json:"matched"` // Classes in both
+	OrphanCount     int      `json:"orphan_count"`
+	UnusedCount     int      `json:"unused_count"`
+	CoveragePercent float64  `json:"coverage_percent"` // Matched / HTML classes
 }
 
 // Validator validates HTML classes against CSS or trained patterns.
 type Validator struct {
-	config          *trainer.Config
+	config           *trainer.Config
 	compiledPatterns []*regexp.Regexp
 	literalSet       map[string]struct{}
 	ignoredSet       map[string]struct{}

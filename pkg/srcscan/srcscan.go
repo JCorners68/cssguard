@@ -161,23 +161,26 @@ func (s *Scanner) scanFile(path string) (map[string]struct{}, error) {
 	for scanner.Scan() {
 		line := scanner.Text()
 
-		// Skip template literals with ${} - too complex to parse correctly
-		if strings.Contains(line, "${") {
-			continue
-		}
-
-		// Extract from class/className attributes
+		// Extract from class/className attributes (only quoted strings, not template literals)
 		matches := classAttrRegex.FindAllStringSubmatch(line, -1)
 		for _, match := range matches {
 			if len(match) > 1 {
+				// Skip if the captured value contains interpolation markers
+				if strings.Contains(match[1], "${") || strings.Contains(match[1], "` +") {
+					continue
+				}
 				extractTokens(match[1], classes)
 			}
 		}
 
-		// Extract from helper functions
+		// Extract from helper functions (only string literal arguments)
 		matches = helperRegex.FindAllStringSubmatch(line, -1)
 		for _, match := range matches {
 			if len(match) > 1 {
+				// Skip if the captured value contains interpolation markers
+				if strings.Contains(match[1], "${") || strings.Contains(match[1], "` +") {
+					continue
+				}
 				extractTokens(match[1], classes)
 			}
 		}

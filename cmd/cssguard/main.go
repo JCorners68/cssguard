@@ -309,26 +309,45 @@ func directCmd(args []string) {
 
 	// Parse CSS classes
 	cssClasses := make(map[string]struct{})
+	var parseErrors []string
 	for _, path := range strings.Split(*cssDir, ",") {
 		path = strings.TrimSpace(path)
 		info, err := os.Stat(path)
 		if err != nil {
+			parseErrors = append(parseErrors, fmt.Sprintf("%s: %v", path, err))
 			continue
 		}
 
 		var classes map[string]struct{}
+		var parseErr error
 		if info.IsDir() {
-			classes, _ = parser.ParseFromDir(path)
+			classes, parseErr = parser.ParseFromDir(path)
 		} else {
-			classList, _ := parser.ParseFromFile(path)
-			classes = make(map[string]struct{})
-			for _, c := range classList {
-				classes[c] = struct{}{}
+			classList, err := parser.ParseFromFile(path)
+			if err != nil {
+				parseErr = err
+			} else {
+				classes = make(map[string]struct{})
+				for _, c := range classList {
+					classes[c] = struct{}{}
+				}
 			}
+		}
+
+		if parseErr != nil {
+			parseErrors = append(parseErrors, fmt.Sprintf("%s: %v", path, parseErr))
+			continue
 		}
 
 		for c := range classes {
 			cssClasses[c] = struct{}{}
+		}
+	}
+
+	if len(parseErrors) > 0 {
+		fmt.Fprintf(os.Stderr, "Warning: %d CSS path(s) had errors:\n", len(parseErrors))
+		for _, e := range parseErrors {
+			fmt.Fprintf(os.Stderr, "  - %s\n", e)
 		}
 	}
 

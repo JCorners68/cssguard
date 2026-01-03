@@ -179,6 +179,8 @@ cssguard validate --html ./public --config cssguard.json
 
 3. **Dynamic class composition**: Template literals like `` `text-${color}-500` `` won't be detected. Use full class names in source.
 
+4. **Source-only classes**: For classes present only in JS/TS source (but not emitted HTML), CSSGuard can optionally scan sources via --src; truly runtime-generated classes may still require a Tailwind safelist.
+
 ## Comparison with Alternatives
 
 | Feature | CSSGuard | html-inspector | PurgeCSS |

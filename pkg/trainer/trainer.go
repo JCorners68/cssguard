@@ -10,6 +10,12 @@ import (
 	"strings"
 )
 
+// Pre-compiled regexes for performance (avoid compiling in loops)
+var (
+	numberSuffixRegex = regexp.MustCompile(`^\d+$`)
+	wordSuffixRegex   = regexp.MustCompile(`^[a-zA-Z]+$`)
+)
+
 // Pattern represents a learned regex pattern with metadata.
 type Pattern struct {
 	Name        string   `json:"name"`
@@ -21,10 +27,10 @@ type Pattern struct {
 
 // Config represents the trained configuration.
 type Config struct {
-	Version       string    `json:"version"`
-	Patterns      []Pattern `json:"patterns"`
-	LiteralClasses []string `json:"literal_classes"` // Classes that don't fit patterns
-	Ignored       []string  `json:"ignored"`         // Classes to always ignore
+	Version        string    `json:"version"`
+	Patterns       []Pattern `json:"patterns"`
+	LiteralClasses []string  `json:"literal_classes"` // Classes that don't fit patterns
+	Ignored        []string  `json:"ignored"`         // Classes to always ignore
 }
 
 // Trainer learns regex patterns from CSS class names.
@@ -121,11 +127,11 @@ func (t *Trainer) generatePattern(prefix string, classes []string) *Pattern {
 	hasWords := false
 
 	for suffix := range suffixes {
-		if regexp.MustCompile(`^\d+$`).MatchString(suffix) {
+		if numberSuffixRegex.MatchString(suffix) {
 			hasNumbers = true
-		} else if regexp.MustCompile(`^[a-zA-Z]+$`).MatchString(suffix) {
+		} else if wordSuffixRegex.MatchString(suffix) {
 			hasWords = true
-			regexParts = append(regexParts, suffix)
+			regexParts = append(regexParts, regexp.QuoteMeta(suffix))
 		} else {
 			regexParts = append(regexParts, regexp.QuoteMeta(suffix))
 		}

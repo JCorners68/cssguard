@@ -48,7 +48,7 @@ func ParseFromReader(r io.Reader) ([]string, error) {
 				className := match[1]
 				// Skip Tailwind's escaped characters (e.g., \:, \/)
 				className = unescapeClassName(className)
-				if className != "" && !strings.HasPrefix(className, "-") || isValidNegativeClass(className) {
+				if className != "" && (!strings.HasPrefix(className, "-") || isValidNegativeClass(className)) {
 					classes[className] = struct{}{}
 				}
 			}
