@@ -16,6 +16,7 @@ import (
 
 	"github.com/JCorners68/cssguard/pkg/extractor"
 	"github.com/JCorners68/cssguard/pkg/parser"
+	"github.com/JCorners68/cssguard/pkg/srcscan"
 	"github.com/JCorners68/cssguard/pkg/trainer"
 	"github.com/JCorners68/cssguard/pkg/validator"
 )
@@ -155,6 +156,18 @@ func trainCmd(args []string) {
 	fmt.Printf("  Literals: %d\n", len(config.LiteralClasses))
 }
 
+// srcPathsFlag is a repeatable string flag for --src paths.
+type srcPathsFlag []string
+
+func (s *srcPathsFlag) String() string {
+	return strings.Join(*s, ",")
+}
+
+func (s *srcPathsFlag) Set(value string) error {
+	*s = append(*s, value)
+	return nil
+}
+
 func validateCmd(args []string) {
 	fs := flag.NewFlagSet("validate", flag.ExitOnError)
 	htmlDir := fs.String("html", "", "HTML directory to scan")
@@ -162,6 +175,13 @@ func validateCmd(args []string) {
 	jsonOutput := fs.Bool("json", false, "Output JSON")
 	failOnOrphans := fs.Bool("fail", true, "Exit with code 1 if orphans found")
 	verbose := fs.Bool("verbose", false, "Show all orphan classes")
+
+	// Source scanning flags
+	var srcPaths srcPathsFlag
+	fs.Var(&srcPaths, "src", "Source directory/file to scan for class tokens (repeatable)")
+	srcExt := fs.String("src-ext", "", "Source file extensions (default: .js,.ts,.jsx,.tsx,.astro,.vue,.svelte,.md,.mdx)")
+	srcExclude := fs.String("src-exclude", "", "Directories to exclude (default: node_modules,dist,.next,build,.git)")
+
 	fs.Parse(args)
 
 	if *htmlDir == "" {
@@ -185,6 +205,26 @@ func validateCmd(args []string) {
 		os.Exit(1)
 	}
 
+	// Extract source classes if --src provided
+	var srcClassCount int
+	if len(srcPaths) > 0 {
+		opts := srcscan.Options{
+			Extensions: srcscan.ParseExtensions(*srcExt),
+			Excludes:   srcscan.ParseExcludes(*srcExclude),
+		}
+		scanner := srcscan.New(opts)
+		srcClasses, err := scanner.ScanPaths(srcPaths)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error scanning source files: %v\n", err)
+			os.Exit(1)
+		}
+		srcClassCount = len(srcClasses)
+		// Merge source classes into HTML classes
+		for c := range srcClasses {
+			htmlClasses[c] = struct{}{}
+		}
+	}
+
 	// Validate
 	v, err := validator.New(config)
 	if err != nil {
@@ -200,6 +240,9 @@ func validateCmd(args []string) {
 		enc.SetIndent("", "  ")
 		enc.Encode(result)
 	} else {
+		if srcClassCount > 0 {
+			fmt.Printf("Source Classes: %d\n", srcClassCount)
+		}
 		fmt.Print(result.Summary())
 		if *verbose && result.HasOrphans() {
 			fmt.Println("\nOrphan classes:")
@@ -222,6 +265,13 @@ func directCmd(args []string) {
 	failOnOrphans := fs.Bool("fail", true, "Exit with code 1 if orphans found")
 	verbose := fs.Bool("verbose", false, "Show orphan and unused classes")
 	showUnused := fs.Bool("unused", false, "Also report unused CSS classes")
+
+	// Source scanning flags
+	var srcPaths srcPathsFlag
+	fs.Var(&srcPaths, "src", "Source directory/file to scan for class tokens (repeatable)")
+	srcExt := fs.String("src-ext", "", "Source file extensions (default: .js,.ts,.jsx,.tsx,.astro,.vue,.svelte,.md,.mdx)")
+	srcExclude := fs.String("src-exclude", "", "Directories to exclude (default: node_modules,dist,.next,build,.git)")
+
 	fs.Parse(args)
 
 	if *htmlDir == "" || *cssDir == "" {
@@ -235,6 +285,26 @@ func directCmd(args []string) {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error extracting HTML classes: %v\n", err)
 		os.Exit(1)
+	}
+
+	// Extract source classes if --src provided
+	var srcClassCount int
+	if len(srcPaths) > 0 {
+		opts := srcscan.Options{
+			Extensions: srcscan.ParseExtensions(*srcExt),
+			Excludes:   srcscan.ParseExcludes(*srcExclude),
+		}
+		scanner := srcscan.New(opts)
+		srcClasses, err := scanner.ScanPaths(srcPaths)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error scanning source files: %v\n", err)
+			os.Exit(1)
+		}
+		srcClassCount = len(srcClasses)
+		// Merge source classes into HTML classes
+		for c := range srcClasses {
+			htmlClasses[c] = struct{}{}
+		}
 	}
 
 	// Parse CSS classes
@@ -271,6 +341,9 @@ func directCmd(args []string) {
 		enc.SetIndent("", "  ")
 		enc.Encode(result)
 	} else {
+		if srcClassCount > 0 {
+			fmt.Printf("Source Classes: %d\n", srcClassCount)
+		}
 		fmt.Print(result.Summary())
 		if *verbose {
 			if result.HasOrphans() {

@@ -73,6 +73,43 @@ cssguard direct --html ./public --css ./public/css --verbose
 
 Slower but needs no training. Good for one-off checks.
 
+## Optional Source Scan (`--src`)
+
+When classes are only defined in JavaScript/TypeScript (not in emitted HTML), they appear as false "orphans". The `--src` flag scans source files to extract class tokens:
+
+```bash
+# Scan source files to reduce false positives
+cssguard validate --html ./public --config cssguard.json --src ./src
+
+# Multiple source directories
+cssguard direct --html ./public --css ./public/css --src ./src --src ./components
+```
+
+**How it works:**
+
+This is **string-literal harvesting**, not framework parsing. CSSGuard extracts class tokens from:
+
+- `class="..."` and `className="..."` attributes
+- Helper functions: `clsx("...")`, `classnames("...")`, `twMerge("...")`, `cva("...")`
+
+Only string literal arguments are extracted — template literals with `${}` and conditional expressions are skipped to avoid false positives.
+
+**Options:**
+
+- `--src` — Source directory/file to scan (repeatable)
+- `--src-ext` — File extensions (default: `.js,.ts,.jsx,.tsx,.astro,.vue,.svelte,.md,.mdx`)
+- `--src-exclude` — Directories to exclude (default: `node_modules,dist,.next,build,.git`)
+
+**Output:**
+
+```
+Source Classes: 42
+HTML Classes:   463
+CSS Classes:    579
+Matched:        505 (100.0%)
+Orphans:        0
+```
+
 ## CI Integration
 
 ### GitHub Actions
