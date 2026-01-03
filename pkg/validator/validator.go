@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"sort"
 
-	"github.com/voxell-ai/cssguard/pkg/trainer"
+	"github.com/JCorners68/cssguard/pkg/trainer"
 )
 
 // Result represents the validation result.

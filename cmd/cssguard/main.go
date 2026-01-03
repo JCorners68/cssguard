@@ -14,10 +14,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/voxell-ai/cssguard/pkg/extractor"
-	"github.com/voxell-ai/cssguard/pkg/parser"
-	"github.com/voxell-ai/cssguard/pkg/trainer"
-	"github.com/voxell-ai/cssguard/pkg/validator"
+	"github.com/JCorners68/cssguard/pkg/extractor"
+	"github.com/JCorners68/cssguard/pkg/parser"
+	"github.com/JCorners68/cssguard/pkg/trainer"
+	"github.com/JCorners68/cssguard/pkg/validator"
 )
 
 const version = "0.1.0"
@@ -74,7 +74,7 @@ NOTES:
       regex, it won't be checked. Re-run 'train' when adding new patterns.
     - For Tailwind/utility-first CSS, train against the PURGED output.
 
-More info: https://github.com/voxell-ai/cssguard`)
+More info: https://github.com/JCorners68/cssguard`)
 }
 
 func trainCmd(args []string) {
