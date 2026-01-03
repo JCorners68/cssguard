@@ -15,8 +15,8 @@ import (
 var classRegex = regexp.MustCompile(`\.(-?[_a-zA-Z][_a-zA-Z0-9-]*(?:\\[/:.\[\]()%][_a-zA-Z0-9-]*)*)`)
 
 // pseudoCleanRegex removes pseudo-classes/elements from selectors
-// Matches :pseudo or ::pseudo but preserves the character before if not backslash
-var pseudoCleanRegex = regexp.MustCompile(`([^\\])::?[a-zA-Z-]+(\([^)]*\))?`)
+// Matches :pseudo or ::pseudo at start of string or after non-backslash character
+var pseudoCleanRegex = regexp.MustCompile(`(^|[^\\])::?[a-zA-Z-]+(\([^)]*\))?`)
 
 // ParseFromFile extracts all CSS class selectors from a CSS file.
 func ParseFromFile(path string) ([]string, error) {
