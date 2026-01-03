@@ -1,4 +1,4 @@
-module github.com/voxell-ai/cssguard
+module github.com/JCorners68/cssguard
 
 go 1.21
 
