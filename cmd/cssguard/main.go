@@ -271,6 +271,7 @@ func directCmd(args []string) {
 	failOnOrphans := fs.Bool("fail", true, "Exit with code 1 if orphans found")
 	verbose := fs.Bool("verbose", false, "Show orphan and unused classes")
 	showUnused := fs.Bool("unused", false, "Also report unused CSS classes")
+	redundancyThreshold := fs.Float64("redundancy-threshold", 80.0, "Coverage threshold for redundancy warnings (%)")
 
 	// Source scanning flags
 	var srcPaths srcPathsFlag
@@ -313,10 +314,13 @@ func directCmd(args []string) {
 		}
 	}
 
-	// Parse CSS classes
+	// Parse CSS classes - track per-file for redundancy detection
+	cssPaths := strings.Split(*cssDir, ",")
 	cssClasses := make(map[string]struct{})
+	fileClasses := make(map[string]map[string]struct{}) // file -> classes (for redundancy)
 	var parseErrors []string
-	for _, path := range strings.Split(*cssDir, ",") {
+
+	for _, path := range cssPaths {
 		path = strings.TrimSpace(path)
 		info, err := os.Stat(path)
 		if err != nil {
@@ -345,6 +349,7 @@ func directCmd(args []string) {
 			continue
 		}
 
+		fileClasses[path] = classes
 		for c := range classes {
 			cssClasses[c] = struct{}{}
 		}
@@ -360,16 +365,36 @@ func directCmd(args []string) {
 	// Validate directly
 	result := validator.ValidateDirectly(htmlClasses, cssClasses)
 
+	// Check for redundancy if multiple CSS files
+	var removableFiles []string
+	if len(fileClasses) >= 2 {
+		removableFiles = detectRedundancy(fileClasses, *redundancyThreshold)
+	}
+
 	// Output
 	if *jsonOutput {
+		type DirectResult struct {
+			*validator.Result
+			Removable []string `json:"removable,omitempty"`
+		}
+		out := DirectResult{Result: result, Removable: removableFiles}
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
-		enc.Encode(result)
+		enc.Encode(out)
 	} else {
 		if srcClassCount > 0 {
 			fmt.Printf("Source Classes: %d\n", srcClassCount)
 		}
 		fmt.Print(result.Summary())
+
+		// Show redundancy warnings
+		if len(removableFiles) > 0 {
+			fmt.Printf("\n⚠ Redundant CSS (>%.0f%% covered):\n", *redundancyThreshold)
+			for _, r := range removableFiles {
+				fmt.Printf("  - %s\n", r)
+			}
+		}
+
 		if *verbose {
 			if result.HasOrphans() {
 				fmt.Println("\nOrphan classes (in HTML, not in CSS):")
@@ -394,6 +419,53 @@ func directCmd(args []string) {
 	if *failOnOrphans && result.HasOrphans() {
 		os.Exit(1)
 	}
+}
+
+// detectRedundancy checks if any CSS file is mostly covered by another
+func detectRedundancy(fileClasses map[string]map[string]struct{}, threshold float64) []string {
+	var removable []string
+	paths := make([]string, 0, len(fileClasses))
+	for p := range fileClasses {
+		paths = append(paths, p)
+	}
+
+	for i := 0; i < len(paths); i++ {
+		for j := i + 1; j < len(paths); j++ {
+			f1, f2 := paths[i], paths[j]
+			c1, c2 := fileClasses[f1], fileClasses[f2]
+
+			// Check if f1 is covered by f2
+			covered1 := 0
+			for c := range c1 {
+				if _, ok := c2[c]; ok {
+					covered1++
+				}
+			}
+			if len(c1) > 0 {
+				pct := float64(covered1) / float64(len(c1)) * 100
+				if pct >= threshold {
+					removable = append(removable, fmt.Sprintf("%s (%.1f%% covered by %s)",
+						filepath.Base(f1), pct, filepath.Base(f2)))
+				}
+			}
+
+			// Check if f2 is covered by f1
+			covered2 := 0
+			for c := range c2 {
+				if _, ok := c1[c]; ok {
+					covered2++
+				}
+			}
+			if len(c2) > 0 {
+				pct := float64(covered2) / float64(len(c2)) * 100
+				if pct >= threshold {
+					removable = append(removable, fmt.Sprintf("%s (%.1f%% covered by %s)",
+						filepath.Base(f2), pct, filepath.Base(f1)))
+				}
+			}
+		}
+	}
+	return removable
 }
 
 func redundancyCmd(args []string) {
