@@ -73,6 +73,39 @@ cssguard direct --html ./public --css ./public/css --verbose
 
 Slower but needs no training. Good for one-off checks.
 
+**Redundancy Detection**: When multiple CSS files are provided, `direct` automatically detects redundant CSS (files with >80% class overlap):
+
+```bash
+cssguard direct --html ./public --css "./main.css,./vendor.css"
+```
+
+Output includes warnings if one CSS file is mostly covered by another:
+
+```
+⚠ Redundant CSS (>80% covered):
+  - flowbite.min.css (85.2% covered by main.css)
+```
+
+Use `--redundancy-threshold` to adjust sensitivity (default: 80%).
+
+### `redundancy` — Dedicated redundancy analysis
+
+```bash
+cssguard redundancy --css "./main.css,./vendor.css" --verbose
+```
+
+Compare CSS files to find duplicate class definitions. Useful for identifying vendor libraries that overlap with your Tailwind output.
+
+```
+Files analyzed: 2
+Total unique classes: 1831
+Redundant classes: 303 (defined in 2+ files)
+
+File comparisons:
+  main.css vs flowbite.min.css
+    Overlap: 303 classes (52.3% coverage)
+```
+
 ## Optional Source Scan (`--src`)
 
 When classes are only defined in JavaScript/TypeScript (not in emitted HTML), they appear as false "orphans". The `--src` flag scans source files to extract class tokens:

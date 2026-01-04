@@ -150,6 +150,44 @@ For quick checks without training:
 cssguard direct --html ./public --css ./public/css --verbose
 ```
 
+### Redundancy Detection
+
+When multiple CSS files are provided, CSSGuard automatically detects redundant CSS—files where one largely duplicates another:
+
+```bash
+cssguard direct --html ./public --css "./main.css,./vendor/flowbite.min.css"
+```
+
+This addresses a common pattern: developers add a component library (Flowbite, DaisyUI) alongside their Tailwind build, unaware that both define the same utility classes. The result is bloated CSS with duplicate definitions.
+
+CSSGuard calculates overlap between CSS files:
+
+```
+Files analyzed: 2
+Total unique classes: 1831
+Redundant classes: 303 (defined in 2+ files)
+
+File comparisons:
+  main.css vs flowbite.min.css
+    Overlap: 303 classes (52.3% coverage)
+    Only in main.css: 276
+    Only in flowbite.min.css: 1252
+
+⚠ Redundant CSS (>80% covered):
+  - flowbite.min.css (85.2% covered by main.css)
+```
+
+When one file is >80% covered by another, CSSGuard flags it as removable. This threshold is configurable via `--redundancy-threshold`.
+
+**CI Integration**: The `direct` command can be used in CI to fail builds when redundant CSS is detected:
+
+```yaml
+- name: Check for CSS redundancy
+  run: |
+    CSS_FILES=$(find ./static/css -name "*.css" | tr '\n' ',')
+    cssguard direct --html ./public --css "$CSS_FILES"
+```
+
 ## CI Integration
 
 ### GitHub Actions
