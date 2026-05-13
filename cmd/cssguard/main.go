@@ -22,6 +22,7 @@ import (
 )
 
 const version = "0.1.0"
+const inlineStylesLabel = "<inline-style>"
 
 func main() {
 	if len(os.Args) < 2 {
@@ -65,12 +66,12 @@ COMMANDS:
 
 EXAMPLES:
     # One-time training after CSS purge
-    cssguard train --css ./public/css --output cssguard.json
+    cssguard train --css ./public/css --html ./public --output cssguard.json
 
     # Fast CI validation using trained patterns
     cssguard validate --html ./public --config cssguard.json
 
-    # Direct comparison (no training needed)
+    # Direct comparison (no training needed, includes inline <style> blocks)
     cssguard direct --html ./public --css ./public/css
 
     # Find redundant CSS across multiple files
@@ -87,6 +88,7 @@ More info: https://github.com/JCorners68/cssguard`)
 func trainCmd(args []string) {
 	fs := flag.NewFlagSet("train", flag.ExitOnError)
 	cssDir := fs.String("css", "", "CSS directory or file(s) to parse (comma-separated)")
+	htmlDir := fs.String("html", "", "HTML directory to scan for inline <style> blocks")
 	output := fs.String("output", "cssguard.json", "Output config file")
 	verbose := fs.Bool("verbose", false, "Verbose output")
 	fs.Parse(args)
@@ -135,6 +137,18 @@ func trainCmd(args []string) {
 	if len(cssClasses) == 0 {
 		fmt.Fprintln(os.Stderr, "Error: no CSS classes found")
 		os.Exit(1)
+	}
+
+	if *htmlDir != "" {
+		inlineClasses, err := extractInlineStyleClasses(*htmlDir)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error extracting inline styles: %v\n", err)
+			os.Exit(1)
+		}
+		mergeClasses(cssClasses, inlineClasses)
+		if *verbose && len(inlineClasses) > 0 {
+			fmt.Printf("Found %d unique inline style classes\n", len(inlineClasses))
+		}
 	}
 
 	if *verbose {
@@ -355,6 +369,16 @@ func directCmd(args []string) {
 		}
 	}
 
+	inlineClasses, err := extractInlineStyleClasses(*htmlDir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error extracting inline styles: %v\n", err)
+		os.Exit(1)
+	}
+	if len(inlineClasses) > 0 {
+		fileClasses[inlineStylesLabel] = inlineClasses
+		mergeClasses(cssClasses, inlineClasses)
+	}
+
 	if len(parseErrors) > 0 {
 		fmt.Fprintf(os.Stderr, "Warning: %d CSS path(s) had errors:\n", len(parseErrors))
 		for _, e := range parseErrors {
@@ -418,6 +442,32 @@ func directCmd(args []string) {
 
 	if *failOnOrphans && result.HasOrphans() {
 		os.Exit(1)
+	}
+}
+
+func extractInlineStyleClasses(htmlDir string) (map[string]struct{}, error) {
+	blocks, err := extractor.ExtractStyleBlocksFromDir(htmlDir)
+	if err != nil {
+		return nil, err
+	}
+
+	classes := make(map[string]struct{})
+	for _, block := range blocks {
+		classList, err := parser.ParseFromReader(strings.NewReader(block))
+		if err != nil {
+			return nil, err
+		}
+		for _, class := range classList {
+			classes[class] = struct{}{}
+		}
+	}
+
+	return classes, nil
+}
+
+func mergeClasses(dst, src map[string]struct{}) {
+	for class := range src {
+		dst[class] = struct{}{}
 	}
 }
 
@@ -536,12 +586,12 @@ func redundancyCmd(args []string) {
 
 	// Calculate coverage for each file pair
 	type FilePair struct {
-		File1    string  `json:"file1"`
-		File2    string  `json:"file2"`
-		Overlap  int     `json:"overlap"`
-		File1Only int    `json:"file1_only"`
-		File2Only int    `json:"file2_only"`
-		Coverage float64 `json:"coverage_percent"` // % of smaller file covered by larger
+		File1     string  `json:"file1"`
+		File2     string  `json:"file2"`
+		Overlap   int     `json:"overlap"`
+		File1Only int     `json:"file1_only"`
+		File2Only int     `json:"file2_only"`
+		Coverage  float64 `json:"coverage_percent"` // % of smaller file covered by larger
 	}
 
 	var pairs []FilePair
@@ -573,24 +623,24 @@ func redundancyCmd(args []string) {
 			}
 
 			pairs = append(pairs, FilePair{
-				File1:    f1,
-				File2:    f2,
-				Overlap:  overlap,
+				File1:     f1,
+				File2:     f2,
+				Overlap:   overlap,
 				File1Only: len(c1) - overlap,
 				File2Only: len(c2) - overlap,
-				Coverage: coverage,
+				Coverage:  coverage,
 			})
 		}
 	}
 
 	// Output
 	type RedundancyResult struct {
-		TotalFiles      int                 `json:"total_files"`
-		TotalClasses    int                 `json:"total_classes"`
-		RedundantCount  int                 `json:"redundant_count"`
-		Pairs           []FilePair          `json:"pairs"`
-		Redundant       map[string][]string `json:"redundant,omitempty"`
-		Removable       []string            `json:"removable,omitempty"`
+		TotalFiles     int                 `json:"total_files"`
+		TotalClasses   int                 `json:"total_classes"`
+		RedundantCount int                 `json:"redundant_count"`
+		Pairs          []FilePair          `json:"pairs"`
+		Redundant      map[string][]string `json:"redundant,omitempty"`
+		Removable      []string            `json:"removable,omitempty"`
 	}
 
 	// Find potentially removable files

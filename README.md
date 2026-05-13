@@ -18,7 +18,7 @@ Existing tools find unused CSS. CSSGuard finds the **opposite**: HTML classes wi
 go install github.com/JCorners68/cssguard/cmd/cssguard@latest
 
 # Train (once, after CSS build)
-cssguard train --css ./public/css/main.css --output cssguard.json
+cssguard train --css ./public/css/main.css --html ./public --output cssguard.json
 
 # Validate (in CI)
 cssguard validate --html ./public --config cssguard.json --fail
@@ -49,6 +49,7 @@ cssguard train --css ./public/css --output cssguard.json
 
 Options:
 - `--css` — CSS file or directory (required)
+- `--html` — HTML directory to scan for inline `<style>` blocks
 - `--output` — Config output path (default: `cssguard.json`)
 - `--verbose` — Show pattern statistics
 
@@ -71,7 +72,7 @@ Options:
 cssguard direct --html ./public --css ./public/css --verbose
 ```
 
-Slower but needs no training. Good for one-off checks.
+Slower but needs no training. Good for one-off checks. `direct` also scans inline `<style>` blocks from the HTML directory and treats those selectors as CSS definitions.
 
 **Redundancy Detection**: When multiple CSS files are provided, `direct` automatically detects redundant CSS (files with >80% class overlap):
 

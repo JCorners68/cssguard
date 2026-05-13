@@ -77,6 +77,9 @@ func (t *Trainer) Train() *Config {
 	// Add well-known Tailwind patterns
 	t.addTailwindPatterns()
 
+	// Keep any class that training saw but the learned patterns still miss.
+	t.keepUnmatchedClassesAsLiterals()
+
 	// Sort for deterministic output
 	sort.Slice(t.config.Patterns, func(i, j int) bool {
 		return t.config.Patterns[i].Name < t.config.Patterns[j].Name
@@ -84,6 +87,45 @@ func (t *Trainer) Train() *Config {
 	sort.Strings(t.config.LiteralClasses)
 
 	return t.config
+}
+
+func (t *Trainer) keepUnmatchedClassesAsLiterals() {
+	compiled := make([]*regexp.Regexp, 0, len(t.config.Patterns))
+	for _, p := range t.config.Patterns {
+		re, err := regexp.Compile(p.Regex)
+		if err == nil {
+			compiled = append(compiled, re)
+		}
+	}
+
+	literals := make(map[string]struct{}, len(t.config.LiteralClasses))
+	for _, class := range t.config.LiteralClasses {
+		literals[class] = struct{}{}
+	}
+
+	for class := range t.classes {
+		if _, exists := literals[class]; exists {
+			continue
+		}
+		if classMatchesAny(class, compiled) {
+			continue
+		}
+		literals[class] = struct{}{}
+	}
+
+	t.config.LiteralClasses = t.config.LiteralClasses[:0]
+	for class := range literals {
+		t.config.LiteralClasses = append(t.config.LiteralClasses, class)
+	}
+}
+
+func classMatchesAny(class string, patterns []*regexp.Regexp) bool {
+	for _, re := range patterns {
+		if re.MatchString(class) {
+			return true
+		}
+	}
+	return false
 }
 
 // groupByPrefix groups classes by their prefix (before first number or dash-number).

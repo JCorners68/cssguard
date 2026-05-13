@@ -144,3 +144,26 @@ func TestExtractEmptyClass(t *testing.T) {
 		t.Errorf("expected 0 classes for empty class attributes, got %d", len(classes))
 	}
 }
+
+func TestExtractStyleBlocksFromDir(t *testing.T) {
+	tmpDir := t.TempDir()
+	html := `<!DOCTYPE html><html><head><style>
+		.card { padding: 1rem; }
+		.card:hover { color: red; }
+	</style></head><body><div class="card">Card</div></body></html>`
+	if err := os.WriteFile(filepath.Join(tmpDir, "index.html"), []byte(html), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	blocks, err := ExtractStyleBlocksFromDir(tmpDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(blocks) != 1 {
+		t.Fatalf("expected 1 style block, got %d", len(blocks))
+	}
+	if blocks[0] == "" {
+		t.Fatal("expected non-empty style block")
+	}
+}

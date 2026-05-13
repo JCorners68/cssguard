@@ -104,6 +104,72 @@ func ExtractFromGlob(pattern string) (map[string]struct{}, error) {
 	return classes, nil
 }
 
+// ExtractStyleBlocksFromFile extracts raw CSS from all <style> blocks in an HTML file.
+func ExtractStyleBlocksFromFile(path string) ([]string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	return ExtractStyleBlocksFromReader(f)
+}
+
+// ExtractStyleBlocksFromReader extracts raw CSS from all <style> blocks.
+func ExtractStyleBlocksFromReader(r io.Reader) ([]string, error) {
+	doc, err := html.Parse(r)
+	if err != nil {
+		return nil, err
+	}
+
+	var blocks []string
+	var extract func(*html.Node)
+	extract = func(n *html.Node) {
+		if n.Type == html.ElementNode && n.Data == "style" {
+			var b strings.Builder
+			for c := n.FirstChild; c != nil; c = c.NextSibling {
+				if c.Type == html.TextNode {
+					b.WriteString(c.Data)
+				}
+			}
+			if css := strings.TrimSpace(b.String()); css != "" {
+				blocks = append(blocks, css)
+			}
+		}
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			extract(c)
+		}
+	}
+	extract(doc)
+
+	return blocks, nil
+}
+
+// ExtractStyleBlocksFromDir recursively extracts raw CSS from <style> blocks in HTML files.
+func ExtractStyleBlocksFromDir(dir string) ([]string, error) {
+	var blocks []string
+
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+		if !strings.HasSuffix(strings.ToLower(path), ".html") {
+			return nil
+		}
+
+		fileBlocks, err := ExtractStyleBlocksFromFile(path)
+		if err != nil {
+			return err
+		}
+		blocks = append(blocks, fileBlocks...)
+		return nil
+	})
+
+	return blocks, err
+}
+
 // classInStyleRegex matches class names in style attributes (for inline detection)
 var classInStyleRegex = regexp.MustCompile(`\.([a-zA-Z_-][a-zA-Z0-9_-]*)`)
 

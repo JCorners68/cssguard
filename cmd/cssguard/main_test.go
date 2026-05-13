@@ -1,15 +1,17 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 )
 
 func TestDetectRedundancy(t *testing.T) {
 	tests := []struct {
-		name       string
-		files      map[string]map[string]struct{}
-		threshold  float64
-		wantCount  int
+		name      string
+		files     map[string]map[string]struct{}
+		threshold float64
+		wantCount int
 	}{
 		{
 			name: "no redundancy",
@@ -65,5 +67,22 @@ func TestExpandGlob(t *testing.T) {
 	result := expandGlob("/nonexistent/*.css")
 	if result != nil && len(result) > 0 {
 		t.Errorf("expandGlob() should return nil for non-existent path, got %v", result)
+	}
+}
+
+func TestExtractInlineStyleClasses(t *testing.T) {
+	tmpDir := t.TempDir()
+	html := `<html><head><style>.inline-card { padding: 1rem; } .inline-card:hover { color: red; }</style></head><body></body></html>`
+	if err := os.WriteFile(filepath.Join(tmpDir, "index.html"), []byte(html), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	classes, err := extractInlineStyleClasses(tmpDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, ok := classes["inline-card"]; !ok {
+		t.Fatalf("expected inline-card class, got %v", classes)
 	}
 }
