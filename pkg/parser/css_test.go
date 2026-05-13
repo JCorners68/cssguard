@@ -47,6 +47,21 @@ func TestParseFromFile(t *testing.T) {
 			css:      "._hidden { display: none; } .__container { width: 100%; }",
 			expected: []string{"_hidden", "__container"},
 		},
+		{
+			name:     "ignore urls",
+			css:      `@font-face { src: url("/fonts/space-grotesk-latin.woff2") format("woff2"); } .brand-logo { background-image: url("/logo.svg"); }`,
+			expected: []string{"brand-logo"},
+		},
+		{
+			name:     "ignore quoted attribute values",
+			css:      `.article-hero-image[src$=".svg"] { object-fit: contain; } .theme-toggle[aria-label="Open settings"] { display: block; }`,
+			expected: []string{"article-hero-image", "theme-toggle"},
+		},
+		{
+			name:     "ignore comments",
+			css:      `/*! tailwindcss v4.1.18 | https://tailwindcss.com */ .visible { visibility: visible; }`,
+			expected: []string{"visible"},
+		},
 	}
 
 	for _, tt := range tests {
@@ -70,6 +85,12 @@ func TestParseFromFile(t *testing.T) {
 			for _, exp := range tt.expected {
 				if !classSet[exp] {
 					t.Errorf("expected class %q not found in %v", exp, classes)
+				}
+			}
+
+			for _, unexpected := range []string{"woff2", "svg", "settings", "com"} {
+				if classSet[unexpected] {
+					t.Errorf("unexpected URL fragment %q found in %v", unexpected, classes)
 				}
 			}
 		})

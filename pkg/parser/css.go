@@ -14,6 +14,17 @@ import (
 // Handles escaped characters like \/ \: \[ \] in Tailwind classes
 var classRegex = regexp.MustCompile(`\.(-?[_a-zA-Z][_a-zA-Z0-9-]*(?:\\[/:.\[\]()%][_a-zA-Z0-9-]*)*)`)
 
+// urlRegex removes url(...) contents before class selector extraction.
+// File extensions and hostnames inside URLs are not CSS selectors.
+var urlRegex = regexp.MustCompile(`url\([^)]*\)`)
+
+// stringRegex removes quoted strings before class selector extraction.
+// Attribute values such as [src$=".svg"] are not CSS class selectors.
+var stringRegex = regexp.MustCompile(`"([^"\\]|\\.)*"|'([^'\\]|\\.)*'`)
+
+// commentRegex removes CSS comments before class selector extraction.
+var commentRegex = regexp.MustCompile(`/\*.*?\*/`)
+
 // pseudoCleanRegex removes pseudo-classes/elements from selectors
 // Matches :pseudo or ::pseudo at start of string or after non-backslash character
 var pseudoCleanRegex = regexp.MustCompile(`(^|[^\\])::?[a-zA-Z-]+(\([^)]*\))?`)
@@ -39,6 +50,9 @@ func ParseFromReader(r io.Reader) ([]string, error) {
 
 	for scanner.Scan() {
 		line := scanner.Text()
+		line = commentRegex.ReplaceAllString(line, "")
+		line = urlRegex.ReplaceAllString(line, "")
+		line = stringRegex.ReplaceAllString(line, "")
 		// Remove pseudo-classes/elements to get clean class names
 		// $1 preserves the character before the colon
 		cleaned := pseudoCleanRegex.ReplaceAllString(line, "$1")
